@@ -448,17 +448,17 @@ img.logo-text{
   <div class="cover-badge-frame"><div class="cover-badge">2026 FIFA 世界盃預測</div></div>
   <div class="cover-sub">⚽ 48強分組 → 32強淘汰賽 → 冠軍預測 🏆</div>
   <div class="cover-form">
-    <h2>✦ 預測者資料 ✦</h2>
+    <h2>✦ 預測者 ✦</h2>
     <div class="form-row">
       <label>姓名</label>
       <input id="p-name" type="text" placeholder="請輸入姓名" autocomplete="off">
     </div>
     <div class="form-row">
-      <label>班級</label>
+      <label>班級（隊伍）</label>
       <input id="p-cls" type="text" placeholder="例：301" autocomplete="off">
     </div>
     <div class="form-row">
-      <label>座號</label>
+      <label>座號（背號）</label>
       <input id="p-no" type="text" placeholder="例：12" autocomplete="off">
     </div>
     <button id="btn-start-main" class="btn-start">▶ 進入預測
@@ -1569,22 +1569,35 @@ async function saveChampJPG(){
 }
 
 async function _renderChampCanvas(){
-  const SCALE=2,W=700,H=880;
+  const SCALE=2,W=700;
+  const champName=document.getElementById('champ-team-name')?.textContent||'';
+  const champFlag=document.getElementById('champ-flag')?.textContent||'';
+  // Height is sized to the content so there's no big empty area at the bottom.
+  const H= champName ? 772 : 648;
   const canvas=document.createElement('canvas');
   canvas.width=W*SCALE;canvas.height=H*SCALE;
   const ctx=canvas.getContext('2d');
   ctx.scale(SCALE,SCALE);
+  ctx.textAlign='center';
 
-  // Background
-  const bg=ctx.createRadialGradient(W/2,0,0,W/2,H*.5,H);
-  bg.addColorStop(0,'#1a3060');bg.addColorStop(.6,'#060d1c');
+  // Background — soft radial spotlight
+  const bg=ctx.createRadialGradient(W/2,H*0.30,0,W/2,H*0.5,H*0.95);
+  bg.addColorStop(0,'#1c3566');bg.addColorStop(.55,'#0b1832');bg.addColorStop(1,'#050b18');
   ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
 
-  // Gold border frame
-  ctx.strokeStyle='rgba(255,215,0,.35)';ctx.lineWidth=2;
-  _rrect(ctx,16,16,W-32,H-32,18);ctx.stroke();
+  // Double gold frame
+  ctx.strokeStyle='rgba(255,215,0,.40)';ctx.lineWidth=2;
+  _rrect(ctx,15,15,W-30,H-30,20);ctx.stroke();
+  ctx.strokeStyle='rgba(255,215,0,.15)';ctx.lineWidth=1;
+  _rrect(ctx,23,23,W-46,H-46,15);ctx.stroke();
 
-  let yy=40;
+  // shared gold divider gradient
+  const gd=ctx.createLinearGradient(0,0,W,0);
+  gd.addColorStop(0,'transparent');gd.addColorStop(.2,'#ffd700');
+  gd.addColorStop(.8,'#ffd700');gd.addColorStop(1,'transparent');
+  function divider(y,inset){ctx.strokeStyle=gd;ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(inset,y);ctx.lineTo(W-inset,y);ctx.stroke();}
+
+  let yy=46;
 
   // Logos
   const allImgs=document.querySelectorAll('#champion-capture img.logo-color, #champion-capture img.logo-text');
@@ -1602,7 +1615,6 @@ async function _renderChampCanvas(){
       var lw=lh*(img.naturalWidth/img.naturalHeight);
       var ly=yy+(90-lh)/2;
       if(isText){
-        // white outline so the dark text logo is visible on the dark background
         ctx.save();ctx.shadowColor='#ffffff';ctx.shadowBlur=5;
         for(var _w=0;_w<6;_w++) ctx.drawImage(img,lx,ly,lw,lh);
         ctx.restore();
@@ -1611,73 +1623,67 @@ async function _renderChampCanvas(){
       }
       lx+=lw+14;
     }
-    yy+=100;
+    yy+=98;
   }
 
-  // Gold divider
-  const gd=ctx.createLinearGradient(0,0,W,0);
-  gd.addColorStop(0,'transparent');gd.addColorStop(.2,'#ffd700');
-  gd.addColorStop(.8,'#ffd700');gd.addColorStop(1,'transparent');
-  ctx.strokeStyle=gd;ctx.lineWidth=1.5;
-  ctx.beginPath();ctx.moveTo(60,yy);ctx.lineTo(W-60,yy);ctx.stroke();
-  yy+=24;
+  yy+=16; divider(yy,60); yy+=30;
 
-  // 2026 World Cup trophy graphic + "2026 FIFA 世界盃冠軍！"
-  ctx.textAlign='center';
+  // 2026 World Cup trophy badge
   const trophy=await _loadTrophy();
   if(trophy){
-    const th=160,tw=th*(trophy.naturalWidth/trophy.naturalHeight||0.646);
+    const th=170,tw=th*(trophy.naturalWidth/trophy.naturalHeight||0.646);
     const tx=W/2-tw/2;
-    // white framed badge (matches the on-screen look)
     ctx.save();
-    _rrect(ctx,tx-3,yy-3,tw+6,th+6,14);
-    ctx.fillStyle='#ffffff';ctx.fill();
-    _rrect(ctx,tx,yy,tw,th,11);ctx.save();ctx.clip();
-    ctx.drawImage(trophy,tx,yy,tw,th);ctx.restore();
-    _rrect(ctx,tx-3,yy-3,tw+6,th+6,14);
-    ctx.strokeStyle='rgba(255,215,0,.6)';ctx.lineWidth=3;ctx.stroke();
+    ctx.shadowColor='rgba(255,200,0,.35)';ctx.shadowBlur=22;
+    _rrect(ctx,tx-3,yy-3,tw+6,th+6,14);ctx.fillStyle='#ffffff';ctx.fill();
     ctx.restore();
-    yy+=th+14;
+    ctx.save();_rrect(ctx,tx,yy,tw,th,11);ctx.clip();ctx.drawImage(trophy,tx,yy,tw,th);ctx.restore();
+    _rrect(ctx,tx-3,yy-3,tw+6,th+6,14);
+    ctx.strokeStyle='rgba(255,215,0,.65)';ctx.lineWidth=3;ctx.stroke();
+    yy+=th;
   }else{
-    ctx.font='52px sans-serif';ctx.fillText('🏆',W/2,yy+52);yy+=70;
+    ctx.font='90px sans-serif';ctx.fillText('🏆',W/2,yy+88);yy+=120;
   }
-  ctx.font='bold 18px sans-serif';ctx.fillStyle='rgba(255,215,0,.75)';
-  ctx.fillText('2026 FIFA 世界盃冠軍！',W/2,yy+4);yy+=34;
+
+  // generous gap, then the champion title (fix: was too close to the trophy)
+  yy+=44;
+  ctx.font='bold 19px sans-serif';ctx.fillStyle='rgba(255,221,90,.92)';
+  ctx.fillText('2026 FIFA 世界盃冠軍',W/2,yy);
 
   // Champion country
-  const champName=document.getElementById('champ-team-name')?.textContent||'';
-  const champFlag=document.getElementById('champ-flag')?.textContent||'';
   if(champName){
-    // Flag emoji big
-    ctx.font='72px sans-serif';ctx.fillText(champFlag||'🏆',W/2,yy+80);yy+=90;
-    // Country name gradient text
-    const tg=ctx.createLinearGradient(0,yy,0,yy+60);
-    tg.addColorStop(0,'#ffe066');tg.addColorStop(1,'#ffaa00');
-    ctx.fillStyle=tg;
-    ctx.font='bold 48px sans-serif';ctx.fillText(champName,W/2,yy+54);yy+=80;
+    yy+=34;
+    // glowing flag
+    ctx.save();ctx.shadowColor='rgba(255,190,40,.45)';ctx.shadowBlur=26;
+    ctx.font='70px sans-serif';ctx.fillText(champFlag||'🏆',W/2,yy+58);ctx.restore();
+    yy+=92;
+    // country name — gradient + soft glow
+    const tg=ctx.createLinearGradient(0,yy,0,yy+54);
+    tg.addColorStop(0,'#fff0a8');tg.addColorStop(.5,'#ffd24d');tg.addColorStop(1,'#ff9e00');
+    ctx.save();ctx.shadowColor='rgba(255,170,0,.40)';ctx.shadowBlur=20;
+    ctx.fillStyle=tg;ctx.font='bold 52px sans-serif';ctx.fillText(champName,W/2,yy+48);ctx.restore();
+    yy+=66;
   }else{
-    ctx.font='28px sans-serif';ctx.fillStyle='rgba(255,255,255,.3)';
-    ctx.fillText('（尚未選出冠軍）',W/2,yy+40);yy+=60;
+    yy+=44;
+    ctx.font='28px sans-serif';ctx.fillStyle='rgba(255,255,255,.35)';
+    ctx.fillText('（尚未選出冠軍）',W/2,yy);yy+=30;
   }
 
-  // Gold divider
-  ctx.strokeStyle=gd;ctx.lineWidth=1;
-  ctx.beginPath();ctx.moveTo(100,yy);ctx.lineTo(W-100,yy);ctx.stroke();
-  yy+=24;
+  yy+=30; divider(yy,100); yy+=28;
 
-  // Predictor name / class / no
+  // Predictor line
   const parts=[];
   if(predictor.name)parts.push(predictor.name);
   if(predictor.cls)parts.push('班級 '+predictor.cls);
   if(predictor.no)parts.push('座號 '+predictor.no);
-  ctx.fillStyle='#aabbd4';ctx.font='15px sans-serif';
-  ctx.fillText(parts.join('　・　'),W/2,yy+20);yy+=42;
+  ctx.fillStyle='#aebfd8';ctx.font='15px sans-serif';
+  ctx.fillText(parts.join('　・　'),W/2,yy);yy+=26;
 
   // Date stamp
   const now=new Date();
   const ds=`${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()}`;
-  ctx.fillStyle='rgba(100,140,200,.5)';ctx.font='12px sans-serif';
-  ctx.fillText('預測日期：'+ds,W/2,yy+16);
+  ctx.fillStyle='rgba(120,150,205,.55)';ctx.font='12px sans-serif';
+  ctx.fillText('預測日期：'+ds,W/2,yy+14);
 
   return canvas;
 }
