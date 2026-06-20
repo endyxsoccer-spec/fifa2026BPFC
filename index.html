@@ -1380,7 +1380,7 @@ async function saveJPG(elementId,filename){
 }
 
 async function _renderBracketCanvas(){
-  const PAD=20, LOGO_H=90, INFO_H=36, LABEL_H=32, SCALE=1.5;
+  const PAD=20, LOGO_H=12, INFO_H=36, LABEL_H=32, SCALE=1.5;
   const W=Math.round((TW+PAD*2)*SCALE);
   const H=Math.round((BH+PAD*2+LOGO_H+INFO_H+LABEL_H)*SCALE);
   const canvas=document.createElement('canvas');
@@ -1395,28 +1395,10 @@ async function _renderBracketCanvas(){
 
   let yy=PAD;
 
-  // Logos (top-centre)
+  // Preload the Black Panther logos — they are drawn later, above the final match.
   const allImgs=document.querySelectorAll('#bracket-capture .bracket-top-logos img');
   const logoImgs=await Promise.all(Array.from(allImgs).map(_loadImg));
-  let lx=rW/2;
   const validLogos=logoImgs.filter(Boolean);
-  if(validLogos.length){
-    const totalW=validLogos.reduce((s,img)=>{
-      const asp=img.naturalWidth/img.naturalHeight;
-      const lh=img.className.includes('logo-text')?40:70;
-      return s+lh*asp;
-    },0)+(validLogos.length-1)*10;
-    lx=rW/2-totalW/2;
-    for(var _ili=0;_ili<validLogos.length;_ili++){var img=validLogos[_ili];
-      var isText=img.className.includes('logo-text');
-      var lh=isText?40:70;
-      var asp=img.naturalWidth/img.naturalHeight;
-      var lw=lh*asp;
-      var topOffset=isText?(70-40)/2:0;
-      ctx.drawImage(img,lx,yy+topOffset,lw,lh);
-      lx+=lw+10;
-    }
-  }
   yy+=LOGO_H;
 
   // Gold divider
@@ -1530,6 +1512,33 @@ async function _renderBracketCanvas(){
     };
     drawT(m.t1,0);drawT(m.t2,1);
   }
+
+  // Black Panther logo + text, centred ABOVE the final match (M104)
+  if(POS[104] && validLogos.length){
+    const fcx=PAD+POS[104].x+CW/2;            // centre of the final column
+    const finalTop=yy+POS[104].cy-CH/2;        // top edge of the M104 card
+    const sizes=validLogos.map(function(img){
+      var isText=img.className.includes('logo-text');
+      var h=isText?54:104;
+      return {img:img,isText:isText,h:h,w:h*(img.naturalWidth/img.naturalHeight)};
+    });
+    const sgap=4;
+    const stackH=sizes.reduce(function(s,o){return s+o.h;},0)+(sizes.length-1)*sgap;
+    var sy=finalTop-26-stackH;                 // sit in the empty space above the final
+    if(sy<yy+6) sy=yy+6;
+    for(var _fi=0;_fi<sizes.length;_fi++){var o=sizes[_fi];
+      var sx=fcx-o.w/2;
+      if(o.isText){
+        // white outline so the dark text logo reads on the dark background
+        ctx.save();ctx.shadowColor='#ffffff';ctx.shadowBlur=5;
+        for(var _w2=0;_w2<6;_w2++) ctx.drawImage(o.img,sx,sy,o.w,o.h);
+        ctx.restore();
+      } else {
+        ctx.drawImage(o.img,sx,sy,o.w,o.h);
+      }
+      sy+=o.h+sgap;
+    }
+  }
   return canvas;
 }
 
@@ -1585,7 +1594,15 @@ async function _renderChampCanvas(){
       var isText=img.className.includes('logo-text');
       var lh=isText?44:90;
       var lw=lh*(img.naturalWidth/img.naturalHeight);
-      ctx.drawImage(img,lx,yy+(90-lh)/2,lw,lh);
+      var ly=yy+(90-lh)/2;
+      if(isText){
+        // white outline so the dark text logo is visible on the dark background
+        ctx.save();ctx.shadowColor='#ffffff';ctx.shadowBlur=5;
+        for(var _w=0;_w<6;_w++) ctx.drawImage(img,lx,ly,lw,lh);
+        ctx.restore();
+      } else {
+        ctx.drawImage(img,lx,ly,lw,lh);
+      }
       lx+=lw+14;
     }
     yy+=100;
