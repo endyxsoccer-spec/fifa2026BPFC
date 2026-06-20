@@ -1,0 +1,13 @@
+{
+  "name": "2026FIFA世界盃預測",
+  "short_name": "2026世界盃預測",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#060d1c",
+  "theme_color": "#060d1c",
+  "icons": [
+    { "src": "app-icon.png", "sizes": "500x489", "type": "image/png", "purpose": "any" }
+  ]
+}
