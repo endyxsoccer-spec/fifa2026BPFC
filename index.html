@@ -1766,32 +1766,19 @@ function _copyShareLink(){
     showToast('已複製網址，請在 Safari／Chrome 貼上開啟',true);
   }catch(e){ showToast('請手動複製網址：'+u); }
 }
+var APK_URL='app.apk';   // Android installable file, hosted alongside this page
+function _doNativeInstall(){
+  if(window.__deferredPrompt){
+    window.__deferredPrompt.prompt();
+    try{ window.__deferredPrompt.userChoice.finally(function(){window.__deferredPrompt=null;}); }catch(e){ window.__deferredPrompt=null; }
+    closeInstallOverlay();
+  }
+}
 async function promptInstall(){
   try{
     if(_isStandalone()){ showToast('這個 App 已經在你的桌面囉！',true); return; }
-    // In-app browsers (LINE/FB/IG…) can't add to home screen
-    if(window.__IN_APP_BROWSER){
-      _showInstallOverlay(
-        '<h3>請先用瀏覽器開啟</h3>'+
-        '<ol>'+
-          '<li>點右上角的 <span class="ins-strong">「⋯」或「分享」</span></li>'+
-          '<li>選 <span class="ins-strong">「用預設瀏覽器開啟」</span>（Safari／Chrome）</li>'+
-          '<li>再按一次本頁的「📲 加到手機桌面」</li>'+
-        '</ol>'+
-        '<button class="ins-btn" onclick="_copyShareLink()">📋 複製網址</button>'+
-        '<div class="ins-note">在 LINE／IG／FB 內建瀏覽器無法加到桌面，這是手機系統的限制。</div>'
-      );
-      return;
-    }
-    // Android Chrome (and desktop Chrome/Edge) — native install prompt
-    if(window.__deferredPrompt){
-      window.__deferredPrompt.prompt();
-      try{ await window.__deferredPrompt.userChoice; }catch(e){}
-      window.__deferredPrompt=null;
-      return;
-    }
-    // iOS Safari — guided instructions (no programmatic install on iOS)
     var isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream;
+    // iPhone / iPad — guided "add to home screen" (no APK, no programmatic install on iOS)
     if(isIOS){
       _showInstallOverlay(
         '<h3>📲 加到 iPhone 桌面</h3>'+
@@ -1804,15 +1791,21 @@ async function promptInstall(){
       );
       return;
     }
-    // Other browsers (desktop Safari/Firefox, etc.)
-    _showInstallOverlay(
-      '<h3>📲 加到桌面</h3>'+
-      '<ol>'+
-        '<li>打開瀏覽器的<span class="ins-strong">選單</span></li>'+
-        '<li>選 <span class="ins-strong">「加到主畫面」或「安裝應用程式」</span></li>'+
-      '</ol>'+
-      '<div class="ins-note">手機建議用 Safari（iPhone）或 Chrome（Android）開啟。</div>'
-    );
+    // Android / desktop — offer native install (if available) + Android APK download
+    var html='<h3>📲 安裝到手機</h3>';
+    if(window.__deferredPrompt){
+      html+='<button class="ins-btn" onclick="_doNativeInstall()">📲 一鍵安裝 App（建議）</button>'+
+            '<div class="ins-note" style="margin:8px 0 12px;">— 或下載安裝檔 —</div>';
+    }
+    html+='<a class="ins-btn" href="'+APK_URL+'" download="2026FIFA世界盃預測.apk" '+
+          'style="background:linear-gradient(135deg,#137a4f,#2bd49a,#137a4f);color:#04241a;">⬇ 下載 Android 安裝檔（APK）</a>'+
+          '<div class="ins-note">下載後點開檔案安裝；若提示「未知來源」請按允許。<br>'+
+          '僅 <span class="ins-strong">Android</span> 能安裝 APK；iPhone 請改用 Safari「加入主畫面」。</div>';
+    if(window.__IN_APP_BROWSER){
+      html+='<div class="ins-note ins-strong" style="margin-top:8px;">在 LINE 內若無法下載或安裝，請改用 Chrome 開啟本頁。</div>'+
+            '<button class="ins-btn" style="background:rgba(255,255,255,.12);color:#cfe0ff;border:1px solid rgba(255,255,255,.3);" onclick="_copyShareLink()">📋 複製網址</button>';
+    }
+    _showInstallOverlay(html);
   }catch(e){ console.error('promptInstall:',e); showToast('發生錯誤：'+e.message); }
 }
 // Hide the install button if the app is already running as an installed app.
