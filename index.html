@@ -60,6 +60,36 @@ body{
 }
 .img-save-actions a{background:linear-gradient(135deg,#c8960c,#ffd700,#c8960c);color:#1a0e00;}
 .img-save-actions button{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.3);color:#fff;}
+/* ════ Add-to-home-screen helper ════ */
+.btn-install{
+  width:100%;margin-top:12px;padding:12px;border-radius:11px;cursor:pointer;
+  background:rgba(255,255,255,.06);border:1px solid rgba(120,160,230,.4);
+  color:#bcd2f5;font-size:.92rem;font-weight:700;font-family:inherit;letter-spacing:.5px;
+  transition:background .2s,border-color .2s,transform .1s;
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+}
+.btn-install:hover{background:rgba(255,255,255,.12);border-color:rgba(255,215,0,.5);color:#ffe79a;}
+.btn-install:active{transform:translateY(1px);}
+#install-overlay{
+  display:none;position:fixed;inset:0;z-index:100001;
+  background:rgba(4,9,18,.95);overflow:auto;
+  padding:max(20px,env(safe-area-inset-top)) 18px max(20px,env(safe-area-inset-bottom));
+  align-items:center;justify-content:center;
+}
+#install-overlay.show{display:flex;}
+.install-box{width:100%;max-width:420px;background:rgba(12,24,52,.96);
+  border:1px solid rgba(255,215,0,.3);border-radius:16px;padding:24px 22px;text-align:center;
+  box-shadow:0 14px 50px rgba(0,0,0,.6);}
+.install-box h3{color:#ffd700;font-size:1.15rem;margin-bottom:14px;letter-spacing:1px;}
+.install-box ol{text-align:left;margin:0 auto 6px;padding-left:1.3em;color:#dce6f7;
+  font-size:1rem;line-height:1.9;max-width:320px;}
+.install-box .ins-note{color:#8fb3e6;font-size:.85rem;line-height:1.6;margin-top:10px;}
+.install-box .ins-strong{color:#ffe79a;font-weight:700;}
+.install-box .ins-btn{display:inline-block;margin-top:14px;margin-bottom:4px;padding:11px 22px;
+  border-radius:9px;border:none;font-size:.95rem;font-weight:700;font-family:inherit;cursor:pointer;
+  background:linear-gradient(135deg,#c8960c,#ffd700,#c8960c);color:#1a0e00;}
+.install-close{margin-top:16px;padding:10px 26px;border-radius:9px;cursor:pointer;font-family:inherit;
+  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.3);color:#fff;font-size:.9rem;}
 /* ════ JS error diagnostic overlay ════ */
 #js-error-box{
   display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:99998;
@@ -437,6 +467,13 @@ img.logo-text{
     </div>
   </div>
 </div>
+<!-- Add-to-home-screen helper overlay -->
+<div id="install-overlay" onclick="if(event.target.id==='install-overlay')closeInstallOverlay()">
+  <div class="install-box">
+    <div id="install-content"></div>
+    <button class="install-close" onclick="closeInstallOverlay()">關閉</button>
+  </div>
+</div>
 <!-- JS error diagnostic — populated by window.onerror if script fails -->
 <div id="js-error-box"></div>
 <div id="toast-msg"></div>
@@ -461,7 +498,8 @@ img.logo-text{
       <label>座號（背號）</label>
       <input id="p-no" type="text" placeholder="例：12" autocomplete="off">
     </div>
-    <button id="btn-start-main" class="btn-start">▶ 進入預測
+    <button id="btn-start-main" class="btn-start">▶ 進入預測</button>
+    <button id="btn-install" class="btn-install" type="button" onclick="promptInstall()">📲 加到手機桌面（變成 App）</button>
   </div>
 </div>
 
@@ -1696,6 +1734,89 @@ async function _renderChampCanvas(){
 
 // Fill the World Cup trophy graphics into their <img> placeholders + warm the cache.
 try{ _applyTrophyImages(); _loadTrophy(); }catch(e){ console.error('trophy init:',e); }
+
+// ── Add to Home Screen (install as app) ──────────────────────────────
+window.__deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',function(e){
+  e.preventDefault();           // keep the event so our own button can trigger it
+  window.__deferredPrompt=e;
+});
+// If already installed/standalone, hide the button.
+function _isStandalone(){
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone===true;
+}
+function closeInstallOverlay(){
+  var ov=document.getElementById('install-overlay');
+  if(ov) ov.classList.remove('show');
+  try{ document.body.style.overflow=''; }catch(e){}
+}
+function _showInstallOverlay(html){
+  var ov=document.getElementById('install-overlay');
+  var c=document.getElementById('install-content');
+  if(!ov||!c) return;
+  c.innerHTML=html;
+  ov.classList.add('show');
+  try{ document.body.style.overflow='hidden'; }catch(e){}
+}
+function _copyShareLink(){
+  var u=window.location.href;
+  try{
+    if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(u); }
+    else{ var ta=document.createElement('textarea');ta.value=u;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta); }
+    showToast('已複製網址，請在 Safari／Chrome 貼上開啟',true);
+  }catch(e){ showToast('請手動複製網址：'+u); }
+}
+async function promptInstall(){
+  try{
+    if(_isStandalone()){ showToast('這個 App 已經在你的桌面囉！',true); return; }
+    // In-app browsers (LINE/FB/IG…) can't add to home screen
+    if(window.__IN_APP_BROWSER){
+      _showInstallOverlay(
+        '<h3>請先用瀏覽器開啟</h3>'+
+        '<ol>'+
+          '<li>點右上角的 <span class="ins-strong">「⋯」或「分享」</span></li>'+
+          '<li>選 <span class="ins-strong">「用預設瀏覽器開啟」</span>（Safari／Chrome）</li>'+
+          '<li>再按一次本頁的「📲 加到手機桌面」</li>'+
+        '</ol>'+
+        '<button class="ins-btn" onclick="_copyShareLink()">📋 複製網址</button>'+
+        '<div class="ins-note">在 LINE／IG／FB 內建瀏覽器無法加到桌面，這是手機系統的限制。</div>'
+      );
+      return;
+    }
+    // Android Chrome (and desktop Chrome/Edge) — native install prompt
+    if(window.__deferredPrompt){
+      window.__deferredPrompt.prompt();
+      try{ await window.__deferredPrompt.userChoice; }catch(e){}
+      window.__deferredPrompt=null;
+      return;
+    }
+    // iOS Safari — guided instructions (no programmatic install on iOS)
+    var isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream;
+    if(isIOS){
+      _showInstallOverlay(
+        '<h3>📲 加到 iPhone 桌面</h3>'+
+        '<ol>'+
+          '<li>點畫面 <span class="ins-strong">最下方中間的「分享」鈕</span> ⬆️（方框加向上箭頭）</li>'+
+          '<li>選單往下滑，點 <span class="ins-strong">「加入主畫面」</span></li>'+
+          '<li>右上角按 <span class="ins-strong">「新增」</span></li>'+
+        '</ol>'+
+        '<div class="ins-note">桌面就會出現<span class="ins-strong">黑豹圖示</span>，點開像 App 一樣全螢幕使用。<br>請務必用 <span class="ins-strong">Safari</span> 開啟才有此功能。</div>'
+      );
+      return;
+    }
+    // Other browsers (desktop Safari/Firefox, etc.)
+    _showInstallOverlay(
+      '<h3>📲 加到桌面</h3>'+
+      '<ol>'+
+        '<li>打開瀏覽器的<span class="ins-strong">選單</span></li>'+
+        '<li>選 <span class="ins-strong">「加到主畫面」或「安裝應用程式」</span></li>'+
+      '</ol>'+
+      '<div class="ins-note">手機建議用 Safari（iPhone）或 Chrome（Android）開啟。</div>'
+    );
+  }catch(e){ console.error('promptInstall:',e); showToast('發生錯誤：'+e.message); }
+}
+// Hide the install button if the app is already running as an installed app.
+try{ if(_isStandalone()){ var _bi=document.getElementById('btn-install'); if(_bi) _bi.style.display='none'; } }catch(e){}
 
 // Single unified button handler — prevents double-fire
 //   touchend fires first on touch devices; e.preventDefault() suppresses the
